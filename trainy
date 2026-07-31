@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Trainy TUI Launcher Script
+# Open-source YouTube Music & Audio TUI Client for Linux Terminal
+# ==============================================================================
+
+set -e
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# Colors
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${WHITE}"
+echo "  _______ _____   ______ _____ _   _ _    __XR"
+echo " |__   __|  __ \ / __   |_   _| \ | \ \  / /"
+echo "    | |  | |__) | |__| |  | | |  \| |\ \_/ / "
+echo "    | |  |  _  /|  __  |  | | | . \ | \   /  "
+echo "    | |  | | \ \| |  | | _| |_| |\  |  | |   "
+echo "    |_|  |_|  \_\_|  |_|_____|_| \_|  |_|   "
+echo -e "${CYAN}                       MUSIC${NC}\n"
+
+# Check Python 3
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}[ERROR] python3 is required but not installed.${NC}"
+    exit 1
+fi
+
+# Check ffplay
+if ! command -v ffplay &> /dev/null; then
+    echo -e "${RED}[WARNING] 'ffplay' (ffmpeg) was not found in PATH. Audio playback requires ffplay.${NC}"
+    echo "Install ffmpeg via your package manager (e.g. sudo apt install ffmpeg)"
+    read -p "Press Enter to try launching anyway..."
+fi
+
+# Run Trainy TUI
+cd "$DIR"
+exec python3 app.py "$@"

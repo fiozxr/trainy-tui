@@ -1,0 +1,20 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# System / IDE Files
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Antigravity CLI Logs & Scratch
+.system_generated/
+scratch/
