@@ -289,7 +289,13 @@ class TrainyApp(App):
         self.lyric_index = -1
         self.shuffle_mode = False
         self.smart_radio_mode = True
+        
+        # Animations & Visualizers
         self.bar_chars = [" ", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        self.spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.spinner_idx = 0
+        self.is_loading_track = False
+        self.loading_track_title = ""
 
     def compose(self) -> ComposeResult:
         with Container(id="top-nav-bar"):
@@ -355,7 +361,8 @@ class TrainyApp(App):
         qtable.cursor_type = "row"
         qtable.add_columns("#", "Title", "Artist", "Duration")
 
-        self.set_interval(0.15, self.update_ticks)
+        # Fast 100ms interval for fluid visualizer & loading transition animations
+        self.set_interval(0.1, self.update_ticks)
 
     # NAVIGATION ACTIONS
     def switch_view(self, view_id: str):
@@ -571,20 +578,31 @@ class TrainyApp(App):
 
     @work(exclusive=True)
     async def play_track_async(self, track: dict):
-        self.query_one("#player-track", Label).update(f"Loading audio: {track['title']}...")
-        
+        # 1. Trigger Loading Transition State & Spinner Animation
+        self.is_loading_track = True
+        self.loading_track_title = track['title']
+        self.query_one("#full-title", Label).update(f"Loading: {track['title']}...")
+        self.query_one("#full-artist", Label).update(f"Artist: {track['artist']}")
+
+        # 2. Extract Audio Stream URL asynchronously
         stream_url = await asyncio.to_thread(self.api.get_stream_url, track['videoId'])
+        
         if not stream_url:
+            self.is_loading_track = False
             self.query_one("#player-track", Label).update(f"Error loading: {track['title']}")
+            self.query_one("#full-title", Label).update(f"Error Loading Stream: {track['title']}")
             return
 
+        # 3. Start Playback & End Loading Transition
         if self.player.play(stream_url, track):
+            self.is_loading_track = False
             radio_str = " [Radio]" if self.smart_radio_mode else ""
             self.query_one("#player-track", Label).update(f"> {track['title']} - {track['artist']}{radio_str}")
             
             self.query_one("#full-title", Label).update(track['title'])
             self.query_one("#full-artist", Label).update(track['artist'])
 
+            # 4. Fetch Lyrics asynchronously without blocking audio
             self.lyrics = await asyncio.to_thread(
                 self.api.get_synced_lyrics, track['title'], track['artist']
             )
@@ -594,9 +612,25 @@ class TrainyApp(App):
                 self.query_one("#lyrics-side-text", Static).update(no_lyr)
                 self.query_one("#full-lyrics-text", Static).update(no_lyr)
         else:
+            self.is_loading_track = False
             self.query_one("#player-track", Label).update("Playback error")
 
     def update_ticks(self) -> None:
+        self.spinner_idx = (self.spinner_idx + 1) % len(self.spinner_frames)
+        spin_char = self.spinner_frames[self.spinner_idx]
+
+        # 1. Loading Track Transition State Animation
+        if self.is_loading_track:
+            msg = f"{spin_char} Loading Audio Stream: {self.loading_track_title}..."
+            self.query_one("#player-track", Label).update(msg)
+            
+            load_wave = f"{spin_char} ~ ~ ~ LOADING AUDIO STREAM ~ ~ ~ {spin_char}"
+            self.query_one("#full-ascii", Label).update(
+                f"┌──────────────────────────────────────────┐\n│  [ {load_wave} ]  │\n└──────────────────────────────────────────┘"
+            )
+            return
+
+        # 2. Live Audio Playing State - Animated Beat Bars Visualizer
         if self.player.is_playing() and not self.player.is_paused:
             dancing_bars = " ".join([random.choice(self.bar_chars) for _ in range(18)])
             self.query_one("#full-ascii", Label).update(
