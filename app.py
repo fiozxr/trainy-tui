@@ -302,7 +302,7 @@ class TrainyApp(App):
         with ContentSwitcher(initial="view-home", id="main-content-switcher"):
             # VIEW 1: HOME & SEARCH
             with Vertical(id="view-home"):
-                yield Input(placeholder="Search songs... (Press / to focus, Enter to search)", id="search-input")
+                yield Input(placeholder="Search songs or paste YouTube Playlist link... (Press / to focus, Enter to search)", id="search-input")
                 with Horizontal(id="home-split"):
                     with Vertical(id="tracks-panel"):
                         yield DataTable(id="tracks-table")
@@ -495,8 +495,31 @@ class TrainyApp(App):
         query = event.value.strip()
         if not query:
             return
-        self.query_one("#player-track", Label).update(f"Searching for '{query}'...")
-        self.perform_search(query)
+        
+        if self.api.is_playlist_url(query):
+            self.query_one("#player-track", Label).update("Loading YouTube playlist...")
+            self.perform_load_playlist(query)
+        else:
+            self.query_one("#player-track", Label).update(f"Searching for '{query}'...")
+            self.perform_search(query)
+
+    @work(exclusive=True)
+    async def perform_load_playlist(self, query: str):
+        tracks = await asyncio.to_thread(self.api.get_playlist_tracks, query, 100)
+        self.tracks = tracks
+        
+        table = self.query_one("#tracks-table", DataTable)
+        table.clear()
+        
+        for trk in tracks:
+            table.add_row(trk['title'], trk['artist'], trk['duration'])
+            
+        if tracks:
+            self.queue = list(tracks)
+            self.notify(f"Loaded Playlist: {len(tracks)} tracks ready!", severity="information")
+            self.play_queue_index(0)
+        else:
+            self.query_one("#player-track", Label).update("Could not load playlist tracks.")
 
     @work(exclusive=True)
     async def perform_search(self, query: str):
@@ -574,7 +597,6 @@ class TrainyApp(App):
             self.query_one("#player-track", Label).update("Playback error")
 
     def update_ticks(self) -> None:
-        # Animate dancing equalizer beat bars
         if self.player.is_playing() and not self.player.is_paused:
             dancing_bars = " ".join([random.choice(self.bar_chars) for _ in range(18)])
             self.query_one("#full-ascii", Label).update(
