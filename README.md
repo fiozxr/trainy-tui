@@ -12,6 +12,9 @@
 An open-source, ultra-fast, minimalist **Terminal YouTube Music Player** built for Linux CLI power users. Featuring **YouTube playlist link playback**, an **animated real-time beat bars visualizer**, continuous **Smart Radio autoplay**, synchronized LRC lyrics, time seeking, and complete queue management—all in a sleek monochrome TUI.
 
 ---
+# THIS PROJECT IS ARCHIVED. ( UNMAINTAINED )
+STILL USABLE.
+---
 
 ## ⚡ Global 1-Line Installation (Auto-Cleaned)
 
